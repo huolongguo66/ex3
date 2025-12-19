@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古风皮影互动</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden; /* 隐藏页面滚动条 */
+        }
+        /* 背景容器 - 响应式适配 */
+        .bg-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: url('img/bg.png') no-repeat center;
+            background-size: cover;
+        }
+        /* 按钮通用样式（修复hover放大+响应式） */
+        .btn {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: clamp(40px, 5vw, 60px); /* 响应式宽度：40px~60px */
+            height: clamp(40px, 5vw, 60px); /* 响应式高度 */
+            z-index: 10; /* 确保按钮在最上层 */
+        }
+        .btn:hover {
+            transform: scale(1.2) !important; /* 强制放大 */
+        }
+        /* 返回按钮 */
+        .btn-fanhui {
+            top: 2vw;
+            left: 2vw;
+            background: url('img/fanhui.png') no-repeat center;
+            background-size: contain;
+        }
+        /* 声音按钮 */
+        .btn-yinliang {
+            top: 8vw;
+            left: 2vw;
+            background: url('img/yinliang.png') no-repeat center;
+            background-size: contain;
+        }
+        /* 人物容器 - 响应式 */
+        .character-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* 避免遮挡按钮 */
+        }
+        /* 男子样式：响应式尺寸+慢动画+最终350px间距（相对定位） */
+        .nan {
+            position: absolute;
+            width: clamp(180px, 25vw, 280px); /* 你调整后的尺寸 */
+            height: auto;
+            left: 2vw; /* 初始左侧（响应式） */
+            top: 50%;
+            transform: translateY(-50%);
+            transition: left 4s ease; /* 4秒慢动画 */
+        }
+        /* 女子样式：响应式尺寸+慢动画+微调后更靠左的位置 */
+        .nv {
+            position: absolute;
+            width: clamp(240px, 25vw, 340px); /* 你调整后的尺寸 */
+            height: auto;
+            right: 2vw; /* 初始右侧（响应式） */
+            top: 53%;
+            transform: translateY(-50%);
+            transition: right 4s ease; /* 4秒慢动画 */
+        }
+        /* 牵手图：响应式+放大尺寸+默认隐藏 */
+        .qianshou {
+            position: absolute;
+            width: clamp(500px, 45vw, 700px); /* 响应式宽度：500~700px（放大） */
+            height: auto;
+            display: none;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        /* 收留按钮：大幅放大尺寸+调高高度+居中（核心调整） */
+        .btn-shouliu {
+            position: absolute;
+            bottom: 5vw;
+            left: 50%;
+            transform: translateX(-50%); /* 水平居中 */
+            width: clamp(250px, 20vw, 300px); /* 大幅放大：250~300px */
+            height: clamp(120px, 12vw, 160px); /* 大幅调高：120~160px */
+            object-fit: contain; /* 保持图片比例 */
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            display: none; /* 初始隐藏 */
+            z-index: 10; /* 最上层 */
+        }
+        .btn-shouliu:hover {
+            transform: translateX(-50%) scale(1.1) !important; /* 强制放大+居中 */
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-container">
+        <!-- 返回按钮 -->
+        <div class="btn btn-fanhui" id="fanhuiBtn"></div>
+        <!-- 声音按钮 -->
+        <div class="btn btn-yinliang" id="yinliangBtn"></div>
+        <!-- 人物容器 -->
+        <div class="character-container">
+            <img src="img/nan.png" alt="男子" class="nan" id="nan">
+            <img src="img/nv.png" alt="女子" class="nv" id="nv">
+            <img src="img/qianshou.png" alt="牵手" class="qianshou" id="qianshou">
+        </div>
+        <!-- 收留女子按钮（大幅放大） -->
+        <img src="img/shouliuanniu.png" alt="收留女子" class="btn-shouliu" id="shouliuBtn">
+    </div>
+
+    <script>
+        // 获取所有元素
+        const nanEl = document.getElementById('nan');
+        const nvEl = document.getElementById('nv');
+        const shouliuBtn = document.getElementById('shouliuBtn');
+        const qianshouEl = document.getElementById('qianshou');
+        const yinliangBtn = document.getElementById('yinliangBtn');
+
+        // 响应式计算人物最终位置（男子350px偏移，女子微调更靠左）
+        function setCharacterPosition() {
+            const screenWidth = window.innerWidth;
+            // 男子偏移：350px（原逻辑）
+            const nanOffset = Math.min(350, screenWidth / 2 - 100);
+            // 女子偏移：比男子多20px → 更靠左（仅微调一点点）
+            const nvOffset = Math.min(330, screenWidth / 2 - 80); 
+            
+            nanEl.style.left = `${screenWidth / 2 - nanOffset}px`;
+            nvEl.style.right = `${screenWidth / 2 - nvOffset}px`; // 数值越大，女子位置越靠左
+        }
+
+        // 页面加载+窗口大小变化时执行
+        window.addEventListener('load', function() {
+            // 初始化人物移动
+            setCharacterPosition();
+            // 动画结束后显示收留按钮（延迟4秒）
+            setTimeout(() => {
+                shouliuBtn.style.display = 'block';
+                console.log('收留按钮已显示'); // 调试用
+            }, 4000);
+        });
+
+        // 窗口大小变化时重新计算位置（保证响应式）
+        window.addEventListener('resize', setCharacterPosition);
+
+        // 收留按钮点击事件
+        shouliuBtn.addEventListener('click', function() {
+            // 隐藏原人物和按钮
+            nanEl.style.display = 'none';
+            nvEl.style.display = 'none';
+            this.style.display = 'none';
+            // 显示牵手图
+            qianshouEl.style.display = 'block';
+        });
+
+        // 声音按钮控制（示例：点击切换静音状态）
+        let isMuted = false;
+        yinliangBtn.addEventListener('click', function() {
+            isMuted = !isMuted;
+            console.log(isMuted ? '已静音' : '已开启声音');
+            // 如需添加背景音乐，取消以下注释并替换音频路径
+            // if (audioEl) audioEl.muted = isMuted;
+        });
+
+    </script>
+</body>
+</html>
